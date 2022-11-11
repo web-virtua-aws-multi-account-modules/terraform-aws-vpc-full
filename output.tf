@@ -58,10 +58,10 @@ output "subnets_ids" {
 
 output "public_route_table" {
   description = "Public route table"
-  value       = module.creat_public_route_table[0]
+  value       = module.creat_public_route_table
 }
 
 output "private_route_table" {
   description = "Private route table"
-  value       = module.creat_private_route_table[0]
+  value       = module.creat_private_route_table
 }
