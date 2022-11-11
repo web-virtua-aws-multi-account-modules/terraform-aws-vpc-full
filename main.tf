@@ -51,6 +51,18 @@ resource "aws_subnet" "create_subnets" {
   })
 }
 
+resource "aws_subnet" "create_nat_gateway" {
+  vpc_id                  = aws_vpc.create_vpc.id
+  cidr_block              = "10.0.100.0/24"
+  map_public_ip_on_launch = true
+  availability_zone       = local.subnets[0].availability_zone
+
+  tags = merge(var.tags_ngtw, {
+    Name        = "${var.vpc_name}-nat-public-subnet-${substr(local.subnets[0].availability_zone, length(local.subnets[0].availability_zone) - 1, 1)}"
+    "tf-subnet" = "${var.vpc_name}-nat-public-subnet-${substr(local.subnets[0].availability_zone, length(local.subnets[0].availability_zone) - 1, 1)}"
+  })
+}
+
 # ----------------------------------------------------------------#
 # Gateways
 # ----------------------------------------------------------------#
@@ -78,7 +90,7 @@ resource "aws_internet_gateway" "create_internet_gateway" {
 
 resource "aws_nat_gateway" "create_nat_gateway" {
   allocation_id = aws_eip.create_static_ip_nat_allocation.id
-  subnet_id     = local.public_subnet_nat
+  subnet_id     = aws_subnet.create_nat_gateway.id
 
   tags = merge(var.tags_ngtw, {
     Name             = "${var.vpc_name}-ngtw"
@@ -87,6 +99,7 @@ resource "aws_nat_gateway" "create_nat_gateway" {
 
   depends_on = [
     aws_vpc.create_vpc,
+    aws_subnet.create_nat_gateway,
     aws_subnet.create_subnets
   ]
 }
