@@ -22,6 +22,36 @@ resource "aws_egress_only_internet_gateway" "create_egress_only_internet_gateway
 }
 
 # ----------------------------------------------------------------#
+# Subnets
+# ----------------------------------------------------------------#
+locals {
+  subnets = [for sb in var.subnets : {
+    cidr_block              = sb.cidr_block
+    availability_zone       = sb.availability_zone
+    type                    = try(sb.is_private, false) ? "public" : "private"
+    map_public_ip_on_launch = try(sb.map_public_ip_on_launch, true)
+    tags                    = try(sb.tags, {})
+  }]
+
+  public_subnets_ids  = [for sb in aws_subnet.create_subnets : sb.id if split("-", sb.tags.tf-subnet)[3] == "public"]
+  private_subnets_ids = [for sb in aws_subnet.create_subnets : sb.id if split("-", sb.tags.tf-subnet)[3] == "private"]
+  public_subnet_nat  = try(local.public_subnets_ids[0], null)
+}
+
+resource "aws_subnet" "create_subnets" {
+  count                   = length(local.subnets)
+  vpc_id                  = aws_vpc.create_vpc.id
+  cidr_block              = local.subnets[count.index].cidr_block
+  map_public_ip_on_launch = local.subnets[count.index].map_public_ip_on_launch
+  availability_zone       = local.subnets[count.index].availability_zone
+
+  tags = merge(var.tags_ngtw, {
+    Name        = "${var.vpc_name}-${local.subnets[count.index].type}-subnet-${substr(local.subnets[count.index].availability_zone, length(local.subnets[count.index].availability_zone) - 1, 1)}"
+    "tf-subnet" = "${var.vpc_name}-${local.subnets[count.index].type}-subnet-${substr(local.subnets[count.index].availability_zone, length(local.subnets[count.index].availability_zone) - 1, 1)}"
+  })
+}
+
+# ----------------------------------------------------------------#
 # Gateways
 # ----------------------------------------------------------------#
 resource "aws_eip" "create_static_ip_nat_allocation" {
@@ -59,36 +89,6 @@ resource "aws_nat_gateway" "create_nat_gateway" {
     aws_vpc.create_vpc,
     aws_subnet.create_subnets
   ]
-}
-
-# ----------------------------------------------------------------#
-# Subnets
-# ----------------------------------------------------------------#
-locals {
-  subnets = [for sb in var.subnets : {
-    cidr_block              = sb.cidr_block
-    availability_zone       = sb.availability_zone
-    type                    = try(sb.is_private, false) ? "public" : "private"
-    map_public_ip_on_launch = try(sb.map_public_ip_on_launch, true)
-    tags                    = try(sb.tags, {})
-  }]
-
-  public_subnets_ids  = [for sb in aws_subnet.create_subnets : sb.id if split("-", sb.tags.tf-subnet)[3] == "public"]
-  private_subnets_ids = [for sb in aws_subnet.create_subnets : sb.id if split("-", sb.tags.tf-subnet)[3] == "private"]
-  public_subnet_nat  = try(local.public_subnets_ids[0], null)
-}
-
-resource "aws_subnet" "create_subnets" {
-  count                   = length(local.subnets)
-  vpc_id                  = aws_vpc.create_vpc.id
-  cidr_block              = local.subnets[count.index].cidr_block
-  map_public_ip_on_launch = local.subnets[count.index].map_public_ip_on_launch
-  availability_zone       = local.subnets[count.index].availability_zone
-
-  tags = merge(var.tags_ngtw, {
-    Name        = "${var.vpc_name}-${local.subnets[count.index].type}-subnet-${substr(local.subnets[count.index].availability_zone, length(local.subnets[count.index].availability_zone) - 1, 1)}"
-    "tf-subnet" = "${var.vpc_name}-${local.subnets[count.index].type}-subnet-${substr(local.subnets[count.index].availability_zone, length(local.subnets[count.index].availability_zone) - 1, 1)}"
-  })
 }
 
 # ----------------------------------------------------------------#
