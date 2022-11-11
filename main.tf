@@ -48,7 +48,7 @@ resource "aws_internet_gateway" "create_internet_gateway" {
 
 resource "aws_nat_gateway" "create_nat_gateway" {
   allocation_id = aws_eip.create_static_ip_nat_allocation.id
-  subnet_id     = try(local.public_subnets_ids[0], null)
+  subnet_id     = local.public_subnet_nat
 
   tags = merge(var.tags_ngtw, {
     Name             = "${var.vpc_name}-ngtw"
@@ -75,6 +75,7 @@ locals {
 
   public_subnets_ids  = [for sb in aws_subnet.create_subnets : sb.id if split("-", sb.tags.tf-subnet)[3] == "public"]
   private_subnets_ids = [for sb in aws_subnet.create_subnets : sb.id if split("-", sb.tags.tf-subnet)[3] == "private"]
+  public_subnet_nat  = try(local.public_subnets_ids[0], null)
 }
 
 resource "aws_subnet" "create_subnets" {
@@ -105,6 +106,10 @@ module "creat_public_route_table" {
   tags                           = var.tags_rtb
   cidr_block_route_table         = var.cidr_block_route_table
   cidr_block_ipv6_route_table    = var.cidr_block_ipv6_route_table
+
+  depends_on = [
+    aws_internet_gateway.create_internet_gateway
+  ]
 }
 
 module "creat_private_route_table" {
@@ -119,4 +124,8 @@ module "creat_private_route_table" {
   tags                           = var.tags_rtb
   cidr_block_route_table         = var.cidr_block_route_table
   cidr_block_ipv6_route_table    = var.cidr_block_ipv6_route_table
+
+  depends_on = [
+    aws_nat_gateway.create_nat_gateway
+  ]
 }
