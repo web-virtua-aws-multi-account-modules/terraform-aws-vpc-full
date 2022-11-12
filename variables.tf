@@ -82,12 +82,22 @@ variable "cidr_block_ipv6_route_table" {
   default     = "::/0"
 }
 
-variable "subnets" {
-  description = "Define subnets configuration"
+variable "public_subnets" {
+  description = "Define the public subnets configuration"
   type = list(object({
     cidr_block              = string
     availability_zone       = string
-    is_private              = optional(bool)
+    map_public_ip_on_launch = optional(bool)
+    tags                    = optional(map(any))
+  }))
+  default = []
+}
+
+variable "private_subnets" {
+  description = "Define the private subnets configuration"
+  type = list(object({
+    cidr_block              = string
+    availability_zone       = string
     map_public_ip_on_launch = optional(bool)
     tags                    = optional(map(any))
   }))

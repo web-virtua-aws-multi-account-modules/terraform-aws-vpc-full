@@ -55,14 +55,15 @@ provider "aws" {
 
 ```hcl
 module "vpc_main" {
-  source      = "web-virtua-aws-multi-account-modules/vpc-full/aws"
-  vpc_name = "tf-vpc-test"
-  cidr_block    = "10.0.0.0/16"
+  source                           = "web-virtua-aws-multi-account-modules/vpc-full/aws"
+  vpc_name                         = "tf-vpc-test"
+  cidr_block                       = "10.0.0.0/16"
   assign_generated_ipv6_cidr_block = true
-  subnets = var.subnets
+  public_subnets                   = var.public_subnets
+  private_subnets                  = var.private_subnets
 
   providers = {
-    aws = aws.network_dev
+    aws = aws.alias_profile_b
   }
 }
 ```
@@ -71,13 +72,14 @@ module "vpc_main" {
 
 ```hcl
 module "vpc_main" {
-  source      = "web-virtua-aws-multi-account-modules/vpc-full/aws"
-  vpc_name = "tf-vpc-test"
-  cidr_block    = "10.0.0.0/16"
-  subnets = var.subnets
+  source                           = "web-virtua-aws-multi-account-modules/vpc-full/aws"
+  vpc_name                         = "tf-vpc-test"
+  cidr_block                       = "10.0.0.0/16"
+  public_subnets                   = var.public_subnets
+  private_subnets                  = var.private_subnets
 
   providers = {
-    aws = aws.network_dev
+    aws = aws.alias_profile_b
   }
 }
 ```
@@ -94,7 +96,8 @@ module "vpc_main" {
 | assign_generated_ipv6_cidr_block | `bool` | `false` | no | Assign generated ipv6 cidr block | `*`false <br> `*`true |
 | cidr_block_route_table | `string` | `0.0.0.0/0` | no | Cidr Block IPV4 route table | `-` |
 | cidr_block_ipv6_route_table | `string` | `::/0` | no | Cidr Block IPV6 route table | `-` |
-| subnets | `list` | `[]` | no | Define subnets configuration | `-` |
+| public_subnets | `list` | `[]` | no | Define public subnets configuration | `-` |
+| private_subnets | `list` | `[]` | no | Define private subnets configuration | `-` |
 | ou_name | `string` | `no` | no | Organization unit name | `-` |
 | tags | `map(any)` | `{}` | no | Tags to resources | `-` |
 | tags_eip | `map(any)` | `{}` | no | Tags to elastic IP | `-` |
@@ -102,14 +105,13 @@ module "vpc_main" {
 | tags_ngtw | `map(any)` | `{}` | no | Tags to NAT gateway | `-` |
 | tags_rtb | `map(any)` | `{}` | no | Tags to NAT gateway | `-` |
 
-* Model of variable subnets
+* Model of variable public_subnets
 ```hcl
-variable "subnets" {
-  description = "Define the subnets configuration"
+variable "public_subnets" {
+  description = "Define the public subnets configuration"
   type = list(object({
     cidr_block              = string
     availability_zone       = string
-    is_private              = optional(bool)
     map_public_ip_on_launch = optional(bool)
     tags                    = optional(map(any))
   }))
@@ -117,12 +119,38 @@ variable "subnets" {
     {
       cidr_block              = "10.0.1.0/24"
       availability_zone       = "us-east-1a"
-      is_private              = false
       map_public_ip_on_launch = true
       tags                    = {}
     },
     {
       cidr_block              = "10.0.2.0/24"
+      availability_zone       = "us-east-1b"
+      is_private              = true
+      map_public_ip_on_launch = true
+    },
+  ]
+}
+```
+
+* Model of variable private_subnets
+```hcl
+variable "private_subnets" {
+  description = "Define the private subnets configuration"
+  type = list(object({
+    cidr_block              = string
+    availability_zone       = string
+    map_public_ip_on_launch = optional(bool)
+    tags                    = optional(map(any))
+  }))
+  default = [
+    {
+      cidr_block              = "10.0.3.0/24"
+      availability_zone       = "us-east-1a"
+      map_public_ip_on_launch = true
+      tags                    = {}
+    },
+    {
+      cidr_block              = "10.0.4.0/24"
       availability_zone       = "us-east-1b"
       is_private              = true
       map_public_ip_on_launch = true
@@ -140,7 +168,8 @@ variable "subnets" {
 | [aws_eip.create_static_ip_nat_allocation](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eip) | resource |
 | [aws_internet_gateway.create_internet_gateway](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/internet_gateway) | resource |
 | [aws_nat_gateway.create_nat_gateway](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/nat_gateway) | resource |
-| [aws_subnet.create_subnets](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/subnet) | resource |
+| [aws_subnet.create_public_subnets](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/subnet) | resource |
+| [aws_subnet.create_private_subnets](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/subnet) | resource |
 | [aws_route_table.create_route_table](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table) | resource |
 | [aws_route_table_association.create_associate_subnet](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table_association) | resource |
 
@@ -157,7 +186,7 @@ variable "subnets" {
 | `nat_gateway_id` | NAT gateway ID |
 | `egress_only_internet_gateway` | All informations of the egress only internet gateway |
 | `egress_only_internet_gateway_id` | Egress only internet gateway ID |
-| `subnets` | All informations of the Subnets |
-| `subnets_ids` | Object with public and private subnets IDs |
+| `public_subnets` | All informations of the public subnets |
+| `private_subnets` | All informations of the private subnets |
 | `public_route_table` | All informations of the public route table |
 | `private_route_table` | All informations of the private route table |

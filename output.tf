@@ -43,25 +43,22 @@ output "egress_only_internet_gateway_id" {
   value       = aws_egress_only_internet_gateway.create_egress_only_internet_gateway[0].id
 }
 
-output "subnets" {
-  description = "Subnets"
-  value       = aws_subnet.create_subnets
+output "public_subnets" {
+  description = "Public subnets"
+  value       = aws_subnet.create_public_subnets
 }
 
-output "subnets_ids" {
-  description = "Subnets ID's"
-  value = {
-    public  = local.public_subnets_ids
-    private = local.private_subnets_ids
-  }
+output "private_subnets" {
+  description = "Private subnets"
+  value       = aws_subnet.create_private_subnets
 }
 
 output "public_route_table" {
   description = "Public route table"
-  value       = module.creat_public_route_table
+  value       = module.create_public_route_table
 }
 
 output "private_route_table" {
   description = "Private route table"
-  value       = module.creat_private_route_table
+  value       = module.create_private_route_table
 }

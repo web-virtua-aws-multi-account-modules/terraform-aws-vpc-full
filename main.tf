@@ -24,42 +24,29 @@ resource "aws_egress_only_internet_gateway" "create_egress_only_internet_gateway
 # ----------------------------------------------------------------#
 # Subnets
 # ----------------------------------------------------------------#
-locals {
-  subnets = [for sb in var.subnets : {
-    cidr_block              = sb.cidr_block
-    availability_zone       = sb.availability_zone
-    type                    = try(sb.is_private, false) ? "public" : "private"
-    map_public_ip_on_launch = try(sb.map_public_ip_on_launch, true)
-    tags                    = try(sb.tags, {})
-  }]
-
-  public_subnets_ids  = [for sb in aws_subnet.create_subnets : sb.id if split("-", sb.tags.tf-subnet)[3] == "public"]
-  private_subnets_ids = [for sb in aws_subnet.create_subnets : sb.id if split("-", sb.tags.tf-subnet)[3] == "private"]
-  public_subnet_nat  = try(local.public_subnets_ids[0], null)
-}
-
-resource "aws_subnet" "create_subnets" {
-  count                   = length(local.subnets)
+resource "aws_subnet" "create_public_subnets" {
+  count                   = length(var.public_subnets)
   vpc_id                  = aws_vpc.create_vpc.id
-  cidr_block              = local.subnets[count.index].cidr_block
-  map_public_ip_on_launch = local.subnets[count.index].map_public_ip_on_launch
-  availability_zone       = local.subnets[count.index].availability_zone
+  cidr_block              = var.public_subnets[count.index].cidr_block
+  map_public_ip_on_launch = var.public_subnets[count.index].map_public_ip_on_launch
+  availability_zone       = var.public_subnets[count.index].availability_zone
 
   tags = merge(var.tags_ngtw, {
-    Name        = "${var.vpc_name}-${local.subnets[count.index].type}-subnet-${substr(local.subnets[count.index].availability_zone, length(local.subnets[count.index].availability_zone) - 1, 1)}"
-    "tf-subnet" = "${var.vpc_name}-${local.subnets[count.index].type}-subnet-${substr(local.subnets[count.index].availability_zone, length(local.subnets[count.index].availability_zone) - 1, 1)}"
+    Name        = "${var.vpc_name}-public-subnet-${substr(var.public_subnets[count.index].availability_zone, length(var.public_subnets[count.index].availability_zone) - 1, 1)}"
+    "tf-subnet" = "${var.vpc_name}-public-subnet-${substr(var.public_subnets[count.index].availability_zone, length(var.public_subnets[count.index].availability_zone) - 1, 1)}"
   })
 }
 
-resource "aws_subnet" "create_nat_gateway" {
+resource "aws_subnet" "create_private_subnets" {
+  count                   = length(var.private_subnets)
   vpc_id                  = aws_vpc.create_vpc.id
-  cidr_block              = "10.0.100.0/24"
-  map_public_ip_on_launch = true
-  availability_zone       = local.subnets[0].availability_zone
+  cidr_block              = var.private_subnets[count.index].cidr_block
+  map_public_ip_on_launch = var.private_subnets[count.index].map_public_ip_on_launch
+  availability_zone       = var.private_subnets[count.index].availability_zone
 
   tags = merge(var.tags_ngtw, {
-    Name        = "${var.vpc_name}-nat-public-subnet-${substr(local.subnets[0].availability_zone, length(local.subnets[0].availability_zone) - 1, 1)}"
-    "tf-subnet" = "${var.vpc_name}-nat-public-subnet-${substr(local.subnets[0].availability_zone, length(local.subnets[0].availability_zone) - 1, 1)}"
+    Name        = "${var.vpc_name}-private-subnet-${substr(var.private_subnets[count.index].availability_zone, length(var.private_subnets[count.index].availability_zone) - 1, 1)}"
+    "tf-subnet" = "${var.vpc_name}-private-subnet-${substr(var.private_subnets[count.index].availability_zone, length(var.private_subnets[count.index].availability_zone) - 1, 1)}"
   })
 }
 
@@ -90,29 +77,28 @@ resource "aws_internet_gateway" "create_internet_gateway" {
 
 resource "aws_nat_gateway" "create_nat_gateway" {
   allocation_id = aws_eip.create_static_ip_nat_allocation.id
-  subnet_id     = aws_subnet.create_nat_gateway.id
+  subnet_id     = aws_subnet.create_public_subnets[0].id
 
   tags = merge(var.tags_ngtw, {
     Name             = "${var.vpc_name}-ngtw"
-    "tf-nat_gateway" = "${var.vpc_name}-ngtw"
+    "tf-nat-gateway" = "${var.vpc_name}-ngtw"
   })
 
   depends_on = [
     aws_vpc.create_vpc,
-    aws_subnet.create_nat_gateway,
-    aws_subnet.create_subnets
+    aws_subnet.create_public_subnets
   ]
 }
 
 # ----------------------------------------------------------------#
 # Route table association
 # ----------------------------------------------------------------#
-module "creat_public_route_table" {
-  count                          = length(local.public_subnets_ids) > 0 ? 1 : 0
+module "create_public_route_table" {
+  count                          = length(aws_subnet.create_public_subnets) > 0 ? 1 : 0
   source                         = "web-virtua-aws-multi-account-modules/route-table/aws"
   name                           = "${var.vpc_name}-public-rtb"
   vpc_id                         = aws_vpc.create_vpc.id
-  subnet_ids                     = local.public_subnets_ids
+  subnet_ids                     = [for sb in aws_subnet.create_public_subnets : sb.id]
   gateway_id                     = aws_internet_gateway.create_internet_gateway.id
   egress_only_internet_gatewa_id = try(aws_egress_only_internet_gateway.create_egress_only_internet_gateway[0].id, null)
   ou_name                        = var.ou_name
@@ -125,12 +111,12 @@ module "creat_public_route_table" {
   ]
 }
 
-module "creat_private_route_table" {
-  count                          = length(local.private_subnets_ids) > 0 ? 1 : 0
+module "create_private_route_table" {
+  count                          = length(aws_subnet.create_private_subnets) > 0 ? 1 : 0
   source                         = "web-virtua-aws-multi-account-modules/route-table/aws"
   name                           = "${var.vpc_name}-private-rtb"
   vpc_id                         = aws_vpc.create_vpc.id
-  subnet_ids                     = local.private_subnets_ids
+  subnet_ids                     = [for sb in aws_subnet.create_private_subnets : sb.id]
   gateway_id                     = aws_nat_gateway.create_nat_gateway.id
   egress_only_internet_gatewa_id = try(aws_egress_only_internet_gateway.create_egress_only_internet_gateway[0].id, null)
   ou_name                        = var.ou_name
