@@ -35,30 +35,30 @@ output "nat_gateway_id" {
 
 output "egress_only_internet_gateway" {
   description = "Egress only internet gateway"
-  value       = aws_egress_only_internet_gateway.create_egress_only_internet_gateway
+  value       = try(aws_egress_only_internet_gateway.create_egress_only_internet_gateway, null)
 }
 
 output "egress_only_internet_gateway_id" {
   description = "Egress only internet gateway"
-  value       = aws_egress_only_internet_gateway.create_egress_only_internet_gateway[0].id
+  value       = try(aws_egress_only_internet_gateway.create_egress_only_internet_gateway[0].id, null)
 }
 
 output "public_subnets" {
   description = "Public subnets"
-  value       = aws_subnet.create_public_subnets
+  value       = try(aws_subnet.create_public_subnets, [])
 }
 
 output "private_subnets" {
   description = "Private subnets"
-  value       = aws_subnet.create_private_subnets
+  value       = try(aws_subnet.create_private_subnets, [])
 }
 
 output "public_route_table" {
   description = "Public route table"
-  value       = module.create_public_route_table
+  value       = try(module.create_public_route_table, null)
 }
 
 output "private_route_table" {
   description = "Private route table"
-  value       = module.create_private_route_table
+  value       = try(module.create_private_route_table, null)
 }
