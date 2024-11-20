@@ -100,11 +100,12 @@ module "create_public_route_table" {
   vpc_id                         = aws_vpc.create_vpc.id
   subnet_ids                     = [for sb in aws_subnet.create_public_subnets : sb.id]
   gateway_id                     = aws_internet_gateway.create_internet_gateway.id
-  egress_only_internet_gatewa_id = try(aws_egress_only_internet_gateway.create_egress_only_internet_gateway[0].id, null)
+  egress_only_internet_gateway_id = try(aws_egress_only_internet_gateway.create_egress_only_internet_gateway[0].id, null)
   ou_name                        = var.ou_name
   tags                           = var.tags_rtb
-  cidr_block_route_table         = var.cidr_block_route_table
-  cidr_block_ipv6_route_table    = var.cidr_block_ipv6_route_table
+  cidr_block_route_table         = var.cidr_block_public_route_table != null ? var.cidr_block_public_route_table : var.cidr_block_route_table
+  cidr_block_ipv6_route_table    = var.cidr_block_ipv6_public_route_table != null ? var.cidr_block_ipv6_public_route_table : var.cidr_block_ipv6_route_table
+  custom_routes = var.custom_public_routes
 
   depends_on = [
     aws_internet_gateway.create_internet_gateway
@@ -118,11 +119,12 @@ module "create_private_route_table" {
   vpc_id                         = aws_vpc.create_vpc.id
   subnet_ids                     = [for sb in aws_subnet.create_private_subnets : sb.id]
   gateway_id                     = aws_nat_gateway.create_nat_gateway.id
-  egress_only_internet_gatewa_id = try(aws_egress_only_internet_gateway.create_egress_only_internet_gateway[0].id, null)
+  egress_only_internet_gateway_id = try(aws_egress_only_internet_gateway.create_egress_only_internet_gateway[0].id, null)
   ou_name                        = var.ou_name
   tags                           = var.tags_rtb
-  cidr_block_route_table         = var.cidr_block_route_table
-  cidr_block_ipv6_route_table    = var.cidr_block_ipv6_route_table
+  cidr_block_route_table         = var.cidr_block_private_route_table != null ? var.cidr_block_private_route_table : var.cidr_block_route_table
+  cidr_block_ipv6_route_table    = var.cidr_block_ipv6_private_route_table != null ? var.cidr_block_ipv6_private_route_table : var.cidr_block_ipv6_route_table
+  custom_routes = var.custom_private_routes
 
   depends_on = [
     aws_nat_gateway.create_nat_gateway

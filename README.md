@@ -95,9 +95,15 @@ module "vpc_main" {
 | enable_network_address_usage_metrics | `bool` | `false` | no | Enable network address usage metrics | `*`false <br> `*`true |
 | assign_generated_ipv6_cidr_block | `bool` | `false` | no | Assign generated ipv6 cidr block | `*`false <br> `*`true |
 | cidr_block_route_table | `string` | `0.0.0.0/0` | no | Cidr Block IPV4 route table | `-` |
+| cidr_block_public_route_table | `string` | `null` | no | Cidr Block IPV4 public route table | `-` |
+| cidr_block_private_route_table | `string` | `null` | no | Cidr Block IPV4 private route table | `-` |
 | cidr_block_ipv6_route_table | `string` | `::/0` | no | Cidr Block IPV6 route table | `-` |
+| cidr_block_ipv6_public_route_table | `string` | `null` | no | Cidr Block IPV6 public route table | `-` |
+| cidr_block_ipv6_private_route_table | `string` | `null` | no | Cidr Block IPV6 private route table | `-` |
 | public_subnets | `list` | `[]` | no | Define public subnets configuration | `-` |
 | private_subnets | `list` | `[]` | no | Define private subnets configuration | `-` |
+| custom_public_routes | `list(object)` | `[]` | no | List with customized routes to configure in public route table | `-` |
+| custom_private_routes | `list(object)` | `[]` | no | List with customized routes to configure in private route table | `-` |
 | ou_name | `string` | `no` | no | Organization unit name | `-` |
 | tags | `map(any)` | `{}` | no | Tags to resources | `-` |
 | tags_eip | `map(any)` | `{}` | no | Tags to elastic IP | `-` |
@@ -156,6 +162,57 @@ variable "private_subnets" {
       map_public_ip_on_launch = true
     },
   ]
+}
+```
+
+* Model of custom_public_routes variable
+```hcl
+variable "custom_public_routes" {
+  description = "List with customized routes to configure in public route table"
+  type = list(object({
+    cidr_block                 = string
+    ipv6_cidr_block            = optional(string)
+    destination_prefix_list_id = optional(string)
+    carrier_gateway_id         = optional(string)
+    core_network_arn           = optional(string)
+    egress_only_gateway_id     = optional(string)
+    gateway_id                 = optional(string)
+    local_gateway_id           = optional(string)
+    nat_gateway_id             = optional(string)
+    network_interface_id       = optional(string)
+    transit_gateway_id         = optional(string)
+    vpc_endpoint_id            = optional(string)
+    vpc_peering_connection_id  = optional(string)
+  }))
+  default = [
+    {
+      cidr_block = "192.168.1.0/24"
+      gateway_id = "eigw-0b03...fba6"
+    }
+  ]
+}
+```
+
+* Model of custom_private_routes variable
+```hcl
+variable "custom_private_routes" {
+  description = "List with customized routes to configure in private route table"
+  type = list(object({
+    cidr_block                 = string
+    ipv6_cidr_block            = optional(string)
+    destination_prefix_list_id = optional(string)
+    carrier_gateway_id         = optional(string)
+    core_network_arn           = optional(string)
+    egress_only_gateway_id     = optional(string)
+    gateway_id                 = optional(string)
+    local_gateway_id           = optional(string)
+    nat_gateway_id             = optional(string)
+    network_interface_id       = optional(string)
+    transit_gateway_id         = optional(string)
+    vpc_endpoint_id            = optional(string)
+    vpc_peering_connection_id  = optional(string)
+  }))
+  default = []
 }
 ```
 
